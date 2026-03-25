@@ -12,14 +12,21 @@
   "dependencies": {
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.49.4",
+    "@use-gesture/react": "^10.3.1",
+    "@vidstack/react": "^0.6.15",
     "echarts": "^5.6.0",
     "echarts-for-react": "^3.0.2",
+    "embla-carousel-react": "^8.6.0",
+    "file-saver": "^2.0.5",
+    "framer-motion": "^12.38.0",
+    "jszip": "^3.10.1",
     "next": "^15.3.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "xstate": "^5.18.2"
   },
   "devDependencies": {
+    "@types/file-saver": "^2.0.7",
     "@types/node": "^22.14.0",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",

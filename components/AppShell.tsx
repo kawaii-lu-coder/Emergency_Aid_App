@@ -49,6 +49,17 @@ export function AppShell({ children, user }: AppShellProps) {
               </Link>
             ))}
             
+            {/* Courses Link for Students */}
+            {user?.role === 'student' && user?.stage && (
+              <Link 
+                href={`/stage/${user.stage}/courses`} 
+                className="relative text-apple-text hover:text-apple-blue transition-colors duration-200 font-medium group hidden md:block"
+              >
+                Courses
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-apple-blue transition-all duration-200 ease-apple group-hover:w-full" />
+              </Link>
+            )}
+            
             {/* Teacher Dashboard Link */}
             {(user?.role === 'teacher' || user?.role === 'admin') && (
               <Link 
