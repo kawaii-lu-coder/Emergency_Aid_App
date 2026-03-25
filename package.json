@@ -3,13 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
     "build": "next build",
+    "dev": "next dev",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "preview": "npm run cf-build && npm run cf-preview",
+    "deploy": "npm run cf-build && npm run cf-deploy",
+    "cf-build": "npx @opennextjs/cloudflare@latest build",
+    "cf-preview": "npx wrangler dev",
+    "cf-deploy": "npx wrangler deploy",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "clean": "if exist .open-next rmdir /s /q .open-next && if exist .worker-next rmdir /s /q .worker-next && if exist .next rmdir /s /q .next"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "^1.17.3",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.49.4",
     "@use-gesture/react": "^10.3.1",
@@ -36,6 +44,7 @@
     "postcss": "^8.5.3",
     "supabase": "^2.83.0",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "wrangler": "^4.77.0"
   }
 }

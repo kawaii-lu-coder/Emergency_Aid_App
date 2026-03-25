@@ -41,76 +41,102 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // Validate JWT and get user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  const isLoggedIn = !!user && !userError;
+  try {
+    // Validate JWT and get user with timeout protection
+    const userPromise = supabase.auth.getUser();
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Supabase connection timeout')), 8000)
+    );
+    
+    const { data: { user }, error: userError } = await Promise.race([
+      userPromise,
+      timeoutPromise
+    ]) as any;
+    
+    const isLoggedIn = !!user && !userError;
 
-  // Redirect unauthenticated users to login
-  if (!isLoggedIn && !isPublicRoute) {
-    const redirectUrl = new URL('/login', request.url);
-    redirectUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(redirectUrl);
-  }
-
-  // Skip further checks for public routes
-  if (isPublicRoute) {
-    return response;
-  }
-
-  // Get user profile for role-based checks
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, stage')
-    .eq('id', user!.id)
-    .single();
-
-  const userRole = profile?.role;
-  const userStage = profile?.stage;
-
-  // Teacher routes protection
-  if (pathname.startsWith('/teacher')) {
-    if (userRole !== 'teacher' && userRole !== 'admin') {
-      return NextResponse.redirect(new URL('/unauthorized', request.url));
+    // Redirect unauthenticated users to login
+    if (!isLoggedIn && !isPublicRoute) {
+      const redirectUrl = new URL('/login', request.url);
+      redirectUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(redirectUrl);
     }
-  }
 
-  // Admin routes protection
-  if (pathname.startsWith('/admin')) {
-    if (userRole !== 'admin') {
-      return NextResponse.redirect(new URL('/unauthorized', request.url));
+    // Skip further checks for public routes
+    if (isPublicRoute) {
+      return response;
     }
-  }
 
-  // Student stage content protection
-  // Redirect to stage selection if student has no stage assigned
-  if (userRole === 'student' && !userStage && pathname !== '/stage/select') {
-    return NextResponse.redirect(new URL('/stage/select', request.url));
-  }
-
-  // Prevent students from accessing other stages
-  if (userRole === 'student' && userStage) {
-    // Check if trying to access a different stage
-    const stageMatch = pathname.match(/^\/(stage|lesson|quiz|scenario|results)\/([^\/]+)/);
-    if (stageMatch) {
-      const targetStage = stageMatch[2];
-      const validStages = ['primary', 'middle', 'high'];
+    // Get user profile for role-based checks with timeout
+    const profilePromise = supabase
+      .from('profiles')
+      .select('role, stage')
+      .eq('id', user!.id)
+      .single();
       
-      if (validStages.includes(targetStage) && targetStage !== userStage) {
-        // Redirect to their assigned stage
-        return NextResponse.redirect(new URL(`/stage/${userStage}`, request.url));
+    const { data: profile } = await Promise.race([
+      profilePromise,
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+      )
+    ]) as any;
+
+    const userRole = profile?.role;
+    const userStage = profile?.stage;
+
+    // Teacher routes protection
+    if (pathname.startsWith('/teacher')) {
+      if (userRole !== 'teacher' && userRole !== 'admin') {
+        return NextResponse.redirect(new URL('/unauthorized', request.url));
       }
     }
-  }
 
-  // Redirect logged-in users from login page to appropriate dashboard
-  if (pathname === '/login' && isLoggedIn) {
-    if (userRole === 'teacher' || userRole === 'admin') {
-      return NextResponse.redirect(new URL('/teacher', request.url));
+    // Admin routes protection
+    if (pathname.startsWith('/admin')) {
+      if (userRole !== 'admin') {
+        return NextResponse.redirect(new URL('/unauthorized', request.url));
+      }
     }
+
+    // Student stage content protection
+    // Redirect to stage selection if student has no stage assigned
+    if (userRole === 'student' && !userStage && pathname !== '/stage/select') {
+      return NextResponse.redirect(new URL('/stage/select', request.url));
+    }
+
+    // Prevent students from accessing other stages
     if (userRole === 'student' && userStage) {
-      return NextResponse.redirect(new URL(`/stage/${userStage}`, request.url));
+      // Check if trying to access a different stage
+      const stageMatch = pathname.match(/^\/(stage|lesson|quiz|scenario|results)\/([^\/]+)/);
+      if (stageMatch) {
+        const targetStage = stageMatch[2];
+        const validStages = ['primary', 'middle', 'high'];
+        
+        if (validStages.includes(targetStage) && targetStage !== userStage) {
+          // Redirect to their assigned stage
+          return NextResponse.redirect(new URL(`/stage/${userStage}`, request.url));
+        }
+      }
     }
-    return NextResponse.redirect(new URL('/stage/select', request.url));
+
+    // Redirect logged-in users from login page to appropriate dashboard
+    if (pathname === '/login' && isLoggedIn) {
+      if (userRole === 'teacher' || userRole === 'admin') {
+        return NextResponse.redirect(new URL('/teacher', request.url));
+      }
+      if (userRole === 'student' && userStage) {
+        return NextResponse.redirect(new URL(`/stage/${userStage}`, request.url));
+      }
+      return NextResponse.redirect(new URL('/stage/select', request.url));
+    }
+  } catch (error) {
+    console.error('Middleware error:', error);
+    // On connection error, allow public routes, redirect others to login
+    if (!isPublicRoute) {
+      const redirectUrl = new URL('/login', request.url);
+      redirectUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(redirectUrl);
+    }
   }
 
   return response;

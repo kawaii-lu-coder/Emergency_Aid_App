@@ -1,0 +1,17 @@
+name = "emergency-aid-app"
+main = ".worker-next/index.mjs"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Build configuration
+[build]
+command = "npx @opennextjs/cloudflare@latest build"
+
+# Environment variables (set these in Cloudflare dashboard or .dev.vars)
+[vars]
+NEXT_PUBLIC_SUPABASE_URL = ""
+NEXT_PUBLIC_SUPABASE_ANON_KEY = ""
+
+# For local development
+[dev]
+port = 3000
